@@ -30,7 +30,7 @@ public class PlayerMovement : MonoBehaviour
 		if (Input.GetKey("up")) 
 			pos.z += Time.deltaTime;*/
 
-		float chladni = Mathf.Abs(Mathf.Cos(n * Mathf.PI * pos.x / L) * Mathf.Cos(m * Mathf.PI * pos.z / L) - Mathf.Cos(m * Mathf.PI * pos.x / L) * Mathf.Cos(n * Mathf.PI * pos.z / L));
+		float chladni = Mathf.Abs(Mathf.Cos(n * Mathf.PI * pos.x / L) * Mathf.Cos(m * Mathf.PI * pos.z / L) - Mathf.Cos(m * Mathf.PI * pos.x / L) * Mathf.Cos(n * Mathf.PI * pos.z / L)) / 2;
 		Debug.Log("x:" + pos.x + " z:" + pos.z + " " + chladni);
 		gameObject.GetComponent<Renderer>().material.color = new Color(chladni, 0, 0);
 		trnsfrm.position = pos;
