@@ -1,95 +1,74 @@
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
-#endif
 
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 6f;
-    public float jumpHeight = 1.5f;   // meters
-    public float rotateSpeed = 12f;
-    public Transform cameraTransform; // optional, defaults to main camera
+    [Header("Movement Settings")]
+    [SerializeField] private float moveSpeed = 5.0f;
+    [SerializeField] private float jumpHeight = 1.5f;
+    [SerializeField] private float gravity = -9.81f;
 
-    private Rigidbody rb;
-    private Vector3 moveDir;
-    private bool jumpRequested;
+    [Header("Ground Check (Feet Only)")]
+    [SerializeField] private Transform groundCheck;
+    [SerializeField] private float groundDistance = 0.2f;
+    [SerializeField] private LayerMask groundMask;
+
+    [Header("Camera & Input References")]
+    [SerializeField] private Transform cameraTransform;
+    [SerializeField] private InputActionReference moveAction;
+    [SerializeField] private InputActionReference jumpAction;
+
+    private CharacterController controller;
+    private Vector3 velocity;
     private bool isGrounded;
 
-    void Awake()
+    private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
-        if (cameraTransform == null && Camera.main != null)
-            cameraTransform = Camera.main.transform;
+        controller = GetComponent<CharacterController>();
     }
 
-    void Update()
+    private void OnEnable()
     {
-        Vector2 input = Vector2.zero;
-        bool jumpPressed = false;
-
-    #if ENABLE_INPUT_SYSTEM
-        var kb = Keyboard.current;
-        if (kb != null)
-        {
-            input.x = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
-            input.y = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
-            jumpPressed = kb.spaceKey.wasPressedThisFrame;
-        }
-    #else
-        input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-        jumpPressed = Input.GetKeyDown(KeyCode.Space);
-    #endif
-
-        input = Vector2.ClampMagnitude(input, 1f);
-
-        Vector3 fwd = cameraTransform ? cameraTransform.forward : Vector3.forward;
-        Vector3 right = cameraTransform ? cameraTransform.right : Vector3.right;
-        fwd.y = 0f; right.y = 0f;
-        fwd.Normalize(); right.Normalize();
-
-        moveDir = fwd * input.y + right * input.x;
-
-        if (jumpPressed)
-            jumpRequested = true;
+        if (moveAction != null) moveAction.action.Enable();
+        if (jumpAction != null) jumpAction.action.Enable();
     }
 
-    void FixedUpdate()
+    private void OnDisable()
     {
-        // Horizontal movement
-        Vector3 v = rb.linearVelocity;
-        v.x = moveDir.x * moveSpeed;
-        v.z = moveDir.z * moveSpeed;
-        rb.linearVelocity = v;
-
-        // Face movement direction
-        if (moveDir.sqrMagnitude > 0.001f)
-        {
-            Quaternion target = Quaternion.LookRotation(moveDir);
-            rb.MoveRotation(Quaternion.Slerp(rb.rotation, target,
-                                             rotateSpeed * Time.fixedDeltaTime));
-        }
-
-        // Jump: v = sqrt(2 * g * h)
-        if (jumpRequested && isGrounded)
-        {
-            float jumpVelocity = Mathf.Sqrt(2f * Mathf.Abs(Physics.gravity.y) * jumpHeight);
-            v = rb.linearVelocity;
-            v.y = 0f;
-            rb.linearVelocity = v;
-            rb.AddForce(Vector3.up * jumpVelocity, ForceMode.VelocityChange);
-        }
-        jumpRequested = false;
-        isGrounded = false; // re-set by OnCollisionStay before the next step
+        if (moveAction != null) moveAction.action.Disable();
+        if (jumpAction != null) jumpAction.action.Disable();
     }
 
-    void OnCollisionStay(Collision collision)
+    private void Update()
     {
-        foreach (ContactPoint c in collision.contacts)
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+
+        if (isGrounded && velocity.y < 0)
         {
-            if (c.normal.y > 0.7f) { isGrounded = true; return; }
+            velocity.y = -2f; 
         }
+
+        Vector2 inputVector = moveAction != null ? moveAction.action.ReadValue<Vector2>() : Vector2.zero;
+
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+
+        forward.y = 0f;
+        right.y = 0f;
+        forward.Normalize();
+        right.Normalize();
+
+        Vector3 moveDirection = forward * inputVector.y + right * inputVector.x;
+        controller.Move(moveDirection * moveSpeed * Time.deltaTime);
+
+        bool jumpPressed = jumpAction != null && jumpAction.action.WasPressedThisFrame();
+        if (jumpPressed && isGrounded)
+        {
+            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        velocity.y += gravity * Time.deltaTime;
+        controller.Move(velocity * Time.deltaTime);
     }
 }
