@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
+using JetBrains.Annotations;
 
 public class PlayerController : MonoBehaviour
 {
@@ -14,6 +16,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 currentVelocity;
     private Vector3 velocitySmoothing;
     private CharacterController characterController;
+    private Coroutine activeEffect;
 
     void Awake()
     {
@@ -73,5 +76,41 @@ public class PlayerController : MonoBehaviour
         if (!context.started) return;
         if (!characterController.isGrounded) return;
         gravity += jumpForce;
+    }
+
+    public void ReceiveEffect(ChladniEffect ceffect)
+    {
+        if (activeEffect != null)
+        {
+            StopCoroutine(activeEffect);
+        }
+        activeEffect = StartCoroutine(ApplyEffect(ceffect));
+    }
+
+    private IEnumerator ApplyEffect(ChladniEffect ceffect)
+    {
+        switch (ceffect)
+        {
+            case ChladniEffect.BoostJump:
+                jumpForce = 40f;
+                break;
+
+            case ChladniEffect.HighGravity:
+                gravityMultiplier = 20f;
+                break;
+        }
+        yield return new WaitForSeconds(3f);
+
+        switch (ceffect)
+        {
+            case ChladniEffect.BoostJump:
+                jumpForce = 30;
+                break;
+
+            case ChladniEffect.HighGravity:
+                gravityMultiplier = 10f;
+                break;
+        }
+        activeEffect = null;
     }
 }
