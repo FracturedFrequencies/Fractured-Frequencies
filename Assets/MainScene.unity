@@ -153,7 +153,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   moveSpeed: 6
-  jumpForce: 5
+  jumpHeight: 1.5
+  rotateSpeed: 12
+  cameraTransform: {fileID: 0}
 --- !u!136 &694971096
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -602,7 +604,7 @@ Transform:
   m_GameObject: {fileID: 1839454733}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -0.02, z: -0.05}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
