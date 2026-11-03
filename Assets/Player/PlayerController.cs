@@ -16,11 +16,27 @@ public class PlayerController : MonoBehaviour
     private Vector3 currentVelocity;
     private Vector3 velocitySmoothing;
     private CharacterController characterController;
-    private Coroutine activeEffect;
+
+    private Coroutine activeEffect; //maximum of on simultaneous effect
+    BaseValues baseValues;
+    struct BaseValues //to return to after Effect duration
+    {
+        public BaseValues(float speed, float jumpForce,float gravity)
+        {
+            this.speed = speed; this.jumpForce = jumpForce; this.gravityMultiplier = gravity;
+        }
+        public float speed; public float jumpForce; public float gravityMultiplier;
+    }
+
+    void setBaseValues()
+    {
+        baseValues = new BaseValues(speed,jumpForce,gravityMultiplier);
+    }
 
     void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        setBaseValues();
     }
 
     void Update()
@@ -78,37 +94,43 @@ public class PlayerController : MonoBehaviour
         gravity += jumpForce;
     }
 
-    public void ReceiveEffect(ChladniEffect ceffect)
+    public void ReceiveEffect(ChladniEffect ceffect, float factor, float duration)
     {
         if (activeEffect != null)
         {
             StopCoroutine(activeEffect);
         }
-        activeEffect = StartCoroutine(ApplyEffect(ceffect));
+        activeEffect = StartCoroutine(ApplyEffect(ceffect, factor, duration));
     }
 
-    private IEnumerator ApplyEffect(ChladniEffect ceffect)
+    private IEnumerator ApplyEffect(ChladniEffect ceffect, float factor, float duration)
     {
         switch (ceffect)
         {
             case ChladniEffect.BoostJump:
-                jumpForce = 40f;
+                jumpForce = baseValues.jumpForce * factor;
                 break;
 
             case ChladniEffect.HighGravity:
-                gravityMultiplier = 20f;
+                gravityMultiplier = baseValues.gravityMultiplier * factor;
+                break;
+            case ChladniEffect.SpeedBoost:
+                speed = baseValues.speed * factor;
                 break;
         }
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(duration);
 
         switch (ceffect)
         {
             case ChladniEffect.BoostJump:
-                jumpForce = 30;
+                jumpForce = baseValues.jumpForce;
                 break;
 
             case ChladniEffect.HighGravity:
-                gravityMultiplier = 10f;
+                gravityMultiplier = baseValues.gravityMultiplier;
+                break;
+            case ChladniEffect.SpeedBoost:
+                speed = baseValues.speed;
                 break;
         }
         activeEffect = null;

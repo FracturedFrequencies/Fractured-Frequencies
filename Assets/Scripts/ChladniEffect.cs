@@ -3,5 +3,6 @@ using UnityEngine;
 public enum ChladniEffect
 {
     BoostJump,
-    HighGravity
+    HighGravity,
+    SpeedBoost
 }
