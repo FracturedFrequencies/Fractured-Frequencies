@@ -12,7 +12,7 @@ public class FieldPlayerDetection : MonoBehaviour
         {
             if (!other.gameObject.TryGetComponent<PlayerController>(out var controller)) return;
             controller.ReceiveEffect(effect, factor, duration);
-            if (Time.frameCount %  10 == 0) Debug.Log("Trigger Active");
+            //if (Time.frameCount %  10 == 0) Debug.Log("Trigger Active");
         }
     }
 }

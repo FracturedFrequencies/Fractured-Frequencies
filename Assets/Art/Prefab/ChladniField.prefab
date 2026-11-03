@@ -1046,8 +1046,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 25}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 2, y: 2, z: 2}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 6901850039619862065}
   - {fileID: 8410328011455724501}
@@ -1086,4 +1086,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be1e6a9b3987969448af0fe4c51a420c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FieldPlayerDetection
-  ceffect: 0
+  effect: 0
+  factor: 1
+  duration: 1

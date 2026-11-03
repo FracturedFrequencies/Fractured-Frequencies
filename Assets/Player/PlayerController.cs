@@ -17,7 +17,8 @@ public class PlayerController : MonoBehaviour
     private Vector3 velocitySmoothing;
     private CharacterController characterController;
 
-    private Coroutine activeEffect; //maximum of on simultaneous effect
+    private Coroutine activeEffectCoroutine; 
+    public ChladniEffect lastEffect; //maximum of on simultaneous effect
     BaseValues baseValues;
     struct BaseValues //to return to after Effect duration
     {
@@ -96,14 +97,26 @@ public class PlayerController : MonoBehaviour
 
     public void ReceiveEffect(ChladniEffect ceffect, float factor, float duration)
     {
-        if (activeEffect != null)
+        if (activeEffectCoroutine != null)
         {
-            StopCoroutine(activeEffect);
+            ApplyEffectFactor(lastEffect, 1f);
+            StopCoroutine(activeEffectCoroutine);
         }
-        activeEffect = StartCoroutine(ApplyEffect(ceffect, factor, duration));
+        lastEffect = ceffect;
+        activeEffectCoroutine = StartCoroutine(EffectCoroutine(ceffect, factor, duration));
     }
 
-    private IEnumerator ApplyEffect(ChladniEffect ceffect, float factor, float duration)
+    private IEnumerator EffectCoroutine(ChladniEffect ceffect, float factor, float duration)
+    {
+        ApplyEffectFactor(ceffect,factor);
+
+        yield return new WaitForSeconds(duration);
+
+        ApplyEffectFactor(ceffect, 1f);
+        activeEffectCoroutine = null;
+    }
+
+    void ApplyEffectFactor(ChladniEffect ceffect, float factor)
     {
         switch (ceffect)
         {
@@ -118,21 +131,5 @@ public class PlayerController : MonoBehaviour
                 speed = baseValues.speed * factor;
                 break;
         }
-        yield return new WaitForSeconds(duration);
-
-        switch (ceffect)
-        {
-            case ChladniEffect.BoostJump:
-                jumpForce = baseValues.jumpForce;
-                break;
-
-            case ChladniEffect.HighGravity:
-                gravityMultiplier = baseValues.gravityMultiplier;
-                break;
-            case ChladniEffect.SpeedBoost:
-                speed = baseValues.speed;
-                break;
-        }
-        activeEffect = null;
     }
 }
