@@ -1090,6 +1090,7 @@ GameObject:
   m_Component:
   - component: {fileID: 519906057}
   - component: {fileID: 519906056}
+  - component: {fileID: 519906058}
   m_Layer: 0
   m_Name: Sun
   m_TagString: Untagged
@@ -1177,6 +1178,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &519906058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519906055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &681934723
 GameObject:
   m_ObjectHideFlags: 0
@@ -2009,6 +2039,98 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1182439168}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1246586467
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1246586469}
+  - component: {fileID: 1246586468}
+  m_Layer: 0
+  m_Name: Pattern
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1246586468
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246586467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 689c8123d4587c8439fd4e1a92bcdc70, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FracturedFrequencies.Pattern.ChladniField
+  chords:
+  - name: C major
+    notes: 3c0000004000000043000000
+    rings: 3
+    tint: {r: 1, g: 0.95, b: 0.85, a: 1}
+  - name: A minor
+    notes: 390000003c00000040000000
+    rings: 4
+    tint: {r: 0.75, g: 0.85, b: 1, a: 1}
+  - name: F major
+    notes: 35000000390000003c000000
+    rings: 3
+    tint: {r: 0.9, g: 1, b: 0.85, a: 1}
+  - name: G7
+    notes: 370000003b0000003e00000041000000
+    rings: 5
+    tint: {r: 1, g: 0.85, b: 0.95, a: 1}
+  - name: B dim
+    notes: 3b0000003e00000041000000
+    rings: 3
+    tint: {r: 0.85, g: 0.8, b: 1, a: 1}
+  startChord: 0
+  morphTime: 1.2
+  numberKeysSelectChord: 1
+  playChordSound: 1
+  chordVolume: 0.5
+  radius: 6
+  particleCount: 6000
+  petalDepth: 2.2
+  spin: 0.08
+  petalDrift: 0.35
+  attraction: 5
+  maxSpeed: 1.2
+  shake: 0.7
+  lineShimmer: 0.012
+  chordKick: 1
+  respawnRate: 0.03
+  rippleHeight: 0.12
+  chordRippleHeight: 0.6
+  rippleDecay: 1.2
+  rippleWavelength: 2.5
+  rippleSpeed: 3
+  sandBounce: 0.15
+  particleMaterial: {fileID: 0}
+  particleSize: 0.06
+  lineColor: {r: 0.85, g: 0.95, b: 1, a: 1}
+  offLineColor: {r: 0.55, g: 0.65, b: 1, a: 0.08}
+  lineSharpness: 6
+--- !u!4 &1246586469
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246586467}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 2.6, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1312223629
 GameObject:
   m_ObjectHideFlags: 0
@@ -2555,3 +2677,4 @@ SceneRoots:
   - {fileID: 980765595}
   - {fileID: 357105272}
   - {fileID: 286062461}
+  - {fileID: 1246586469}
