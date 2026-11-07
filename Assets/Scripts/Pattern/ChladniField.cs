@@ -6,24 +6,25 @@ using UnityEngine.Rendering;
 using UnityEngine.InputSystem;
 #endif
 
-namespace FracturedFrequencies.Tools
+namespace FracturedFrequencies.Pattern
 {
     /// <summary>
-    /// A floating Chladni plate made of particles.
+    /// A floating, round Chladni figure made of particles: closed, concentric rings shaped like rosettes.
     ///
-    /// How it works:
-    /// - Every note (pitch class) is mapped to one vibration mode (n, m) of a square plate:
-    ///       f(u,v) = cos(n*pi*u) * cos(m*pi*v)  +/-  cos(m*pi*u) * cos(n*pi*v)      (u, v in 0..1)
-    /// - A chord is the sum of the modes of its notes, so every chord gives its own pattern.
-    /// - Like sand on a real plate, particles are shaken where the plate moves (|f| large) and slide
-    ///   toward the nodal lines (f = 0). When the chord changes, the mode weights cross-fade and the
-    ///   particles flow into the new shape while a ripple runs across the lines.
+    /// How it works (polar coordinates r = 0..1, theta):
+    ///       phi(r, theta) = K * pi * r + r * A(theta)          f = cos(phi)
+    ///       A(theta)      = sum over notes of  w * cos(S * h * theta + phase)
+    /// - The nodal lines (f = 0) are closed rings around the centre; A(theta) bends them into petals.
+    /// - The chord's root picks the symmetry S (3..8 petals), the other notes add harmonics (2S, 3S)
+    ///   whose phase depends on the interval, so major / minor / 7th chords get different outlines.
+    /// - Each chord also sets how many rings there are.
+    /// - Like sand on a plate, particles are shaken where |f| is large and slide onto the rings.
+    ///   On a chord change everything cross-fades and the particles flow into the new figure.
     ///
     /// Usage: add this script to an empty GameObject and press Play. It builds its own particle system
-    /// (child "ChladniParticles"), material and sound at runtime; nothing else needs to be set up.
-    /// The plate lies in the local XZ plane, centred on this transform. Rotate the object to stand it up
-    /// (rotation X = -90 faces the default camera of a new scene).
-    /// Keys 1..9 pick a chord (for testing); gameplay code calls SetChord / SetNotes.
+    /// (child "ChladniParticles"), material and sound at runtime.
+    /// The figure lies in the local XZ plane, centred on this transform (rotation X = -90 faces the
+    /// default camera of a new scene). Keys 1..9 pick a chord; gameplay code calls SetChord / SetNotes.
     /// </summary>
     public class ChladniField : MonoBehaviour
     {
@@ -31,54 +32,60 @@ namespace FracturedFrequencies.Tools
         public class Chord
         {
             public string name = "C";
-            [Tooltip("MIDI note numbers (60 = C4, 69 = A4 = 440 Hz).")]
+            [Tooltip("MIDI note numbers (60 = C4, 69 = A4 = 440 Hz). The first note is the root.")]
             public int[] notes = { 60, 64, 67 };
+            [Tooltip("Number of closed rings (0 = one per note).")]
+            [Range(0, 8)] public int rings = 3;
             public Color tint = Color.white;
 
             public Chord() { }
-            public Chord(string name, Color tint, params int[] notes) { this.name = name; this.tint = tint; this.notes = notes; }
+            public Chord(string name, int rings, Color tint, params int[] notes)
+            { this.name = name; this.rings = rings; this.tint = tint; this.notes = notes; }
         }
 
         [Header("Chords")]
         [SerializeField] private List<Chord> chords = DefaultChords();
         [SerializeField] private int startChord = 0;
-        [Tooltip("Seconds to cross-fade from one pattern to the next.")]
+        [Tooltip("Seconds to cross-fade from one figure to the next.")]
         [SerializeField] private float morphTime = 1.2f;
         [Tooltip("Number keys 1..9 select chords (testing).")]
         [SerializeField] private bool numberKeysSelectChord = true;
         [SerializeField] private bool playChordSound = true;
         [SerializeField, Range(0f, 1f)] private float chordVolume = 0.35f;
 
-        [Header("Plate")]
-        [Tooltip("Side length of the square plate in metres.")]
-        [SerializeField] private float plateSize = 9f;
+        [Header("Shape")]
+        [Tooltip("Radius of the figure in metres.")]
+        [SerializeField] private float radius = 4.5f;
         [SerializeField, Range(500, 20000)] private int particleCount = 6000;
+        [Tooltip("How strongly the rings are bent into petals (radians).")]
+        [SerializeField, Range(0f, 4f)] private float petalDepth = 2.2f;
+        [Tooltip("Slow rotation of the whole figure (radians per second).")]
+        [SerializeField] private float spin = 0.08f;
+        [Tooltip("The petals drift against each other so the rings keep undulating (radians per second).")]
+        [SerializeField] private float petalDrift = 0.35f;
 
-        [Header("Sand motion (plate units per second, plate = 1)")]
-        [Tooltip("How fast particles slide onto the nodal lines.")]
+        [Header("Sand motion (figure radius = 1)")]
+        [Tooltip("How fast particles slide onto the rings.")]
         [SerializeField] private float attraction = 5f;
-        [SerializeField] private float maxSpeed = 0.6f;
-        [Tooltip("Shaking where the plate vibrates (off the lines).")]
-        [SerializeField] private float shake = 0.35f;
-        [Tooltip("Tiny shimmer that remains on the lines.")]
-        [SerializeField] private float lineShimmer = 0.006f;
+        [SerializeField] private float maxSpeed = 1.2f;
+        [Tooltip("Shaking where the plate vibrates (between the rings).")]
+        [SerializeField] private float shake = 0.7f;
+        [Tooltip("Tiny shimmer that remains on the rings.")]
+        [SerializeField] private float lineShimmer = 0.012f;
         [Tooltip("Extra shake right after a chord change; decays with rippleDecay.")]
-        [SerializeField] private float chordKick = 0.5f;
-        [Tooltip("Fraction of particles re-dropped at random per second, keeps the lines fed.")]
+        [SerializeField] private float chordKick = 1f;
+        [Tooltip("Fraction of particles re-dropped at random per second, keeps the rings fed.")]
         [SerializeField] private float respawnRate = 0.03f;
 
-        [Header("Line waves")]
-        [Tooltip("The nodal lines wobble slowly (coordinate warp).")]
-        [SerializeField] private float lineWobble = 0.012f;
-        [SerializeField] private float lineWobbleSpeed = 0.8f;
-        [Tooltip("Height of the ring wave that runs over the plate (metres).")]
+        [Header("Height waves")]
+        [Tooltip("Height of the circular wave that runs outward over the figure (metres).")]
         [SerializeField] private float rippleHeight = 0.12f;
-        [Tooltip("Extra ripple height right after a chord change.")]
+        [Tooltip("Extra wave height right after a chord change.")]
         [SerializeField] private float chordRippleHeight = 0.6f;
         [SerializeField] private float rippleDecay = 1.2f;
         [SerializeField] private float rippleWavelength = 2.5f;
         [SerializeField] private float rippleSpeed = 3f;
-        [Tooltip("Particles off the lines bounce up and down like sand (metres).")]
+        [Tooltip("Particles between the rings bounce up and down like sand (metres).")]
         [SerializeField] private float sandBounce = 0.15f;
 
         [Header("Look")]
@@ -86,48 +93,41 @@ namespace FracturedFrequencies.Tools
         public Material particleMaterial;
         [SerializeField] private float particleSize = 0.06f;
         [SerializeField] private Color lineColor = new Color(0.85f, 0.95f, 1f, 1f);
-        [SerializeField] private Color offLineColor = new Color(0.55f, 0.65f, 1f, 0.12f);
-        [Tooltip("Higher = thinner, sharper lines.")]
+        [SerializeField] private Color offLineColor = new Color(0.55f, 0.65f, 1f, 0.08f);
+        [Tooltip("Higher = thinner, sharper rings.")]
         [SerializeField] private float lineSharpness = 6f;
 
         public event Action<int, Chord> ChordChanged;
         public int CurrentChordIndex { get; private set; } = -1;
         public IReadOnlyList<Chord> Chords => chords;
 
-        // ------------------------------------------------------------------ note -> mode table
+        // ------------------------------------------------------------------ note -> shape tables
 
-        private struct ModeDef { public int n, m; public float sign; public ModeDef(int n, int m, float s) { this.n = n; this.m = m; sign = s; } }
+        // Petal symmetry chosen by the root's pitch class (C, C#, D ... B).
+        private static readonly int[] RootSymmetry = { 5, 7, 4, 6, 3, 8, 6, 5, 7, 4, 6, 3 };
+        // Weight of the 1st, 2nd, 3rd, 4th+ note.
+        private static readonly float[] NoteWeight = { 1f, 0.45f, 0.35f, 0.3f };
 
-        // One mode per pitch class (C, C#, D ... B). Mixed + and - forms so chords don't all share the diagonal.
-        private static readonly ModeDef[] PitchClassModes =
-        {
-            new ModeDef(2, 3, -1), new ModeDef(1, 4, +1), new ModeDef(3, 4, -1), new ModeDef(2, 5, +1),
-            new ModeDef(1, 5, -1), new ModeDef(3, 5, +1), new ModeDef(2, 6, -1), new ModeDef(4, 5, -1),
-            new ModeDef(1, 6, +1), new ModeDef(3, 6, +1), new ModeDef(2, 7, -1), new ModeDef(4, 7, +1),
-        };
-
-        private const int MaxK = 16;
-
-        private class ModeState { public int n, m; public float sign, weight, target; }
-        private readonly List<ModeState> modes = new List<ModeState>();
+        private class Term { public int n; public float phase, drift, weight, target; }
+        private readonly List<Term> terms = new List<Term>();
+        private float rings = 3f, targetRings = 3f;
 
         // ------------------------------------------------------------------ runtime state
 
         private ParticleSystem ps;
         private ParticleSystem.Particle[] parts;
-        private float[] pu, pv, phase;
+        private float[] px, py, bouncePhase;
         private uint rng = 0x9E3779B9u;
         private float lastChangeTime = -100f;
         private Color tint = Color.white, targetTint = Color.white;
         private AudioSource audioSource;
         private readonly Dictionary<int, AudioClip> chordClips = new Dictionary<int, AudioClip>();
 
-        // per-frame scratch
-        private readonly float[] cu = new float[MaxK + 1], su = new float[MaxK + 1], cv = new float[MaxK + 1], sv = new float[MaxK + 1];
-        private int[] an = new int[8], am = new int[8];
-        private float[] asg = new float[8], aw = new float[8];
-        private int activeCount, activeMaxK;
-        private float weightSum;
+        // per-frame copy of the active terms
+        private int[] tn = new int[8];
+        private float[] tph = new float[8], tw = new float[8];
+        private int termCount;
+        private float k, amp, phiCap;
 
         // ------------------------------------------------------------------ public API
 
@@ -138,18 +138,18 @@ namespace FracturedFrequencies.Tools
             index = ((index % chords.Count) + chords.Count) % chords.Count;
             var chord = chords[index];
             CurrentChordIndex = index;
-            ApplyNotes(chord.notes, chord.tint);
+            ApplyNotes(chord.notes, chord.rings, chord.tint);
             if (playChordSound) PlayChord(index, chord.notes);
             ChordChanged?.Invoke(index, chord);
         }
 
         public void NextChord() => SetChord(CurrentChordIndex + 1);
 
-        /// <summary>Show an arbitrary set of notes (MIDI numbers), e.g. from a puzzle or the tuning fork.</summary>
-        public void SetNotes(Color chordTint, params int[] midiNotes)
+        /// <summary>Show an arbitrary set of notes (MIDI numbers, first = root), e.g. from a puzzle.</summary>
+        public void SetNotes(Color chordTint, int ringCount, params int[] midiNotes)
         {
             CurrentChordIndex = -1;
-            ApplyNotes(midiNotes, chordTint);
+            ApplyNotes(midiNotes, ringCount, chordTint);
         }
 
         // ------------------------------------------------------------------ setup
@@ -167,14 +167,13 @@ namespace FracturedFrequencies.Tools
             ConfigureParticleSystem(ps, particleCount, particleMaterial);
             child.SetActive(true);
 
-            pu = new float[particleCount];
-            pv = new float[particleCount];
-            phase = new float[particleCount];
+            px = new float[particleCount];
+            py = new float[particleCount];
+            bouncePhase = new float[particleCount];
             for (int i = 0; i < particleCount; i++)
             {
-                pu[i] = Rand01();
-                pv[i] = Rand01();
-                phase[i] = Rand01() * 6.2832f;
+                RandomInDisk(out px[i], out py[i]);
+                bouncePhase[i] = Rand01() * 6.2832f;
             }
 
             audioSource = GetComponent<AudioSource>();
@@ -194,12 +193,12 @@ namespace FracturedFrequencies.Tools
             playChordSound = false; // no sound on scene start
             SetChord(startChord);
             playChordSound = sound;
-            foreach (var s in modes) s.weight = s.target; // start fully formed
+            foreach (var t in terms) t.weight = t.target; // start fully formed
+            rings = targetRings;
             tint = targetTint;
             lastChangeTime = -100f;
         }
 
-        /// <summary>Puts the ParticleSystem in "driven by script" mode.</summary>
         private static void ConfigureParticleSystem(ParticleSystem system, int count, Material material)
         {
             system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
@@ -251,62 +250,70 @@ namespace FracturedFrequencies.Tools
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
             float t = Time.time;
 
-            UpdateModeWeights(dt);
+            UpdateShape(dt, t);
             tint = Color.Lerp(tint, targetTint, 1f - Mathf.Exp(-dt * 3f / Mathf.Max(0.05f, morphTime)));
 
-            float sinceChange = t - lastChangeTime;
-            float decay = Mathf.Exp(-sinceChange / Mathf.Max(0.05f, rippleDecay));
+            float decay = Mathf.Exp(-(t - lastChangeTime) / Mathf.Max(0.05f, rippleDecay));
             float rippleAmp = rippleHeight + chordRippleHeight * decay;
             float kick = chordKick * decay;
-            float k = Mathf.Min(1f, attraction * dt);
+            float pull = Mathf.Min(1f, attraction * dt);
             float maxStep = maxSpeed * dt;
-            float wob = lineWobble, wobPhase = t * lineWobbleSpeed;
             float rippleK = 6.2832f / Mathf.Max(0.1f, rippleWavelength);
             float respawnP = respawnRate * dt;
-            float half = plateSize * 0.5f;
 
             Color onCol = lineColor * tint, offCol = offLineColor * tint;
             onCol.a = lineColor.a; offCol.a = offLineColor.a;
 
             for (int i = 0; i < particleCount; i++)
             {
-                float u = pu[i], v = pv[i];
+                float x = px[i], y = py[i];
+                bool outside = Eval(x, y, out float f, out float gx, out float gy);
 
-                // Field at a slightly warped position, so the lines wobble.
-                float wu = u + wob * Mathf.Sin(v * 6.2832f + wobPhase);
-                float wv = v + wob * Mathf.Sin(u * 6.2832f + wobPhase * 1.3f + 1.7f);
-                Eval(wu, wv, out float f, out float gu, out float gv);
-
-                // Newton step toward f = 0 (the nodal line), clamped.
-                float s = -f / (gu * gu + gv * gv + 0.5f) * k;
-                float du = gu * s, dv = gv * s;
-                float len2 = du * du + dv * dv;
-                if (len2 > maxStep * maxStep)
+                float dx, dy;
+                if (outside)
                 {
-                    float sc = maxStep / Mathf.Sqrt(len2);
-                    du *= sc; dv *= sc;
+                    // Beyond the outermost ring: drift inward until a ring catches the particle.
+                    float r = Mathf.Sqrt(x * x + y * y) + 1e-5f;
+                    dx = -x / r * maxStep;
+                    dy = -y / r * maxStep;
+                }
+                else
+                {
+                    // Newton step toward f = 0 (the nearest ring), clamped.
+                    float s = -f / (gx * gx + gy * gy + 0.5f) * pull;
+                    dx = gx * s; dy = gy * s;
+                    float len2 = dx * dx + dy * dy;
+                    if (len2 > maxStep * maxStep)
+                    {
+                        float sc = maxStep / Mathf.Sqrt(len2);
+                        dx *= sc; dy *= sc;
+                    }
                 }
 
-                // Shaking: strong where the plate moves, tiny on the lines.
-                float a = Mathf.Abs(f);
-                float jitter = (lineShimmer + (shake + kick) * Mathf.Min(a, 1f)) * dt;
-                du += RandSigned() * jitter;
-                dv += RandSigned() * jitter;
+                // Shaking: strong between the rings, tiny on them.
+                float a = outside ? 1f : Mathf.Abs(f);
+                float jitter = (lineShimmer + (shake + kick) * a) * dt;
+                x += dx + RandSigned() * jitter;
+                y += dy + RandSigned() * jitter;
 
-                u += du; v += dv;
-                if (u < 0f) u = -u; else if (u > 1f) u = 2f - u;
-                if (v < 0f) v = -v; else if (v > 1f) v = 2f - v;
-                if (Rand01() < respawnP) { u = Rand01(); v = Rand01(); }
-                pu[i] = u; pv[i] = v;
+                // Keep inside the unit disk (reflect at the rim).
+                float rr = x * x + y * y;
+                if (rr > 1f)
+                {
+                    float rl = Mathf.Sqrt(rr), back = (2f - rl) / rl;
+                    x *= back; y *= back;
+                }
+                if (Rand01() < respawnP) RandomInDisk(out x, out y);
+                px[i] = x; py[i] = y;
 
                 // Visuals.
                 float onLine = 1f - Mathf.Clamp01(a * lineSharpness);
-                float x = (u - 0.5f) * plateSize, z = (v - 0.5f) * plateSize;
-                float r = Mathf.Sqrt(x * x + z * z);
-                float y = rippleAmp * Mathf.Sin(r * rippleK - t * rippleSpeed) * (1f - r / (half * 1.5f))
-                        + sandBounce * Mathf.Min(a, 1f) * Mathf.Abs(Mathf.Sin(t * 9f + phase[i]));
+                float wx = x * radius, wz = y * radius;
+                float dist = Mathf.Sqrt(wx * wx + wz * wz);
+                float h = rippleAmp * Mathf.Sin(dist * rippleK - t * rippleSpeed) * (1f - 0.6f * dist / radius)
+                        + sandBounce * a * Mathf.Abs(Mathf.Sin(t * 9f + bouncePhase[i]));
 
-                parts[i].position = new Vector3(x, y, z);
+                parts[i].position = new Vector3(wx, h, wz);
                 parts[i].velocity = Vector3.zero;
                 parts[i].startColor = Color.Lerp(offCol, onCol, onLine);
                 parts[i].startSize = particleSize * (0.5f + 0.5f * onLine);
@@ -317,76 +324,89 @@ namespace FracturedFrequencies.Tools
 
         // ------------------------------------------------------------------ field
 
-        private void ApplyNotes(int[] midiNotes, Color chordTint)
+        private void ApplyNotes(int[] midiNotes, int ringCount, Color chordTint)
         {
-            foreach (var s in modes) s.target = 0f;
-            if (midiNotes != null)
+            foreach (var term in terms) term.target = 0f;
+            if (midiNotes != null && midiNotes.Length > 0)
             {
+                int root = midiNotes[0];
+                int sym = RootSymmetry[((root % 12) + 12) % 12];
                 for (int i = 0; i < midiNotes.Length; i++)
                 {
-                    int note = midiNotes[i];
-                    var def = PitchClassModes[((note % 12) + 12) % 12];
-                    int octaveShift = Mathf.Clamp(note / 12 - 1 - 4, 0, 4); // notes above octave 4 use higher modes
-                    int n = Mathf.Min(def.n + octaveShift, MaxK), m = Mathf.Min(def.m + octaveShift, MaxK);
-                    float w = i == 0 ? 1.25f : 1f; // root a little stronger
-                    var st = modes.Find(x => x.n == n && x.m == m && x.sign == def.sign);
-                    if (st == null) { st = new ModeState { n = n, m = m, sign = def.sign }; modes.Add(st); }
-                    st.target += w;
+                    int interval = ((midiNotes[i] - root) % 12 + 12) % 12;
+                    int harmonic = i == 0 ? 1 : (i < 3 ? 2 : 3);
+                    int n = sym * harmonic;
+                    float phase = interval * 0.9f;
+                    var term = terms.Find(x => x.n == n && Mathf.Approximately(x.phase, phase));
+                    if (term == null)
+                    {
+                        term = new Term { n = n, phase = phase, drift = (i % 2 == 0 ? 1f : -1f) / harmonic };
+                        terms.Add(term);
+                    }
+                    term.target += NoteWeight[Mathf.Min(i, NoteWeight.Length - 1)];
                 }
+                targetRings = ringCount > 0 ? ringCount : midiNotes.Length;
             }
             targetTint = chordTint;
             lastChangeTime = Time.time;
         }
 
-        private void UpdateModeWeights(float dt)
+        private void UpdateShape(float dt, float time)
         {
             float rate = dt / Mathf.Max(0.05f, morphTime) * 1.5f;
-            activeCount = 0; activeMaxK = 1; weightSum = 0f;
-            for (int i = modes.Count - 1; i >= 0; i--)
+            rings = Mathf.MoveTowards(rings, targetRings, rate * 2f);
+
+            termCount = 0;
+            float weightSum = 0f;
+            for (int i = terms.Count - 1; i >= 0; i--)
             {
-                var s = modes[i];
-                s.weight = Mathf.MoveTowards(s.weight, s.target, rate);
-                if (s.weight <= 0f && s.target <= 0f) { modes.RemoveAt(i); continue; }
-                if (activeCount == an.Length)
+                var term = terms[i];
+                term.weight = Mathf.MoveTowards(term.weight, term.target, rate);
+                if (term.weight <= 0f && term.target <= 0f) { terms.RemoveAt(i); continue; }
+                if (termCount == tn.Length)
                 {
-                    Array.Resize(ref an, activeCount * 2); Array.Resize(ref am, activeCount * 2);
-                    Array.Resize(ref asg, activeCount * 2); Array.Resize(ref aw, activeCount * 2);
+                    Array.Resize(ref tn, termCount * 2);
+                    Array.Resize(ref tph, termCount * 2);
+                    Array.Resize(ref tw, termCount * 2);
                 }
-                an[activeCount] = s.n; am[activeCount] = s.m; asg[activeCount] = s.sign; aw[activeCount] = s.weight;
-                activeMaxK = Mathf.Max(activeMaxK, Mathf.Max(s.n, s.m));
-                weightSum += s.weight;
-                activeCount++;
+                tn[termCount] = term.n;
+                // spin turns the whole figure; drift moves the harmonics against each other
+                tph[termCount] = term.phase - term.n * spin * time + term.drift * petalDrift * time;
+                tw[termCount] = term.weight;
+                weightSum += term.weight;
+                termCount++;
             }
+
+            amp = weightSum > 1e-4f ? petalDepth / weightSum : 0f;
+            // Choose K so the outermost ring stays inside the disk even where the petals push outward.
+            k = rings / 0.97f + petalDepth / Mathf.PI;
+            phiCap = rings * Mathf.PI;
         }
 
-        /// <summary>Normalised plate displacement f and its gradient at (u, v).</summary>
-        private void Eval(float u, float v, out float f, out float gu, out float gv)
+        /// <summary>f = cos(phi) and its gradient at (x, y). Returns true when outside the outermost ring.</summary>
+        private bool Eval(float x, float y, out float f, out float gx, out float gy)
         {
-            // cos/sin(k*pi*u) for k = 0..maxK by angle addition (4 trig calls per particle).
-            float c1u = Mathf.Cos(Mathf.PI * u), s1u = Mathf.Sin(Mathf.PI * u);
-            float c1v = Mathf.Cos(Mathf.PI * v), s1v = Mathf.Sin(Mathf.PI * v);
-            cu[0] = 1f; su[0] = 0f; cv[0] = 1f; sv[0] = 0f;
-            for (int k = 1; k <= activeMaxK; k++)
-            {
-                cu[k] = cu[k - 1] * c1u - su[k - 1] * s1u;
-                su[k] = su[k - 1] * c1u + cu[k - 1] * s1u;
-                cv[k] = cv[k - 1] * c1v - sv[k - 1] * s1v;
-                sv[k] = sv[k - 1] * c1v + cv[k - 1] * s1v;
-            }
+            float r = Mathf.Sqrt(x * x + y * y);
+            float c = r > 1e-5f ? x / r : 1f, s = r > 1e-5f ? y / r : 0f;
+            float theta = Mathf.Atan2(y, x);
 
-            f = gu = gv = 0f;
-            for (int i = 0; i < activeCount; i++)
+            float A = 0f, dA = 0f;
+            for (int i = 0; i < termCount; i++)
             {
-                int n = an[i], m = am[i];
-                float w = aw[i], sg = asg[i];
-                f  += w * (cu[n] * cv[m] + sg * cu[m] * cv[n]);
-                gu += w * (-n * su[n] * cv[m] - sg * m * su[m] * cv[n]);
-                gv += w * (-m * cu[n] * sv[m] - sg * n * cu[m] * sv[n]);
+                float arg = tn[i] * theta + tph[i];
+                A += tw[i] * Mathf.Cos(arg);
+                dA -= tw[i] * tn[i] * Mathf.Sin(arg);
             }
-            float inv = weightSum > 1e-4f ? 1f / weightSum : 0f;
-            f *= inv;
-            gu *= Mathf.PI * inv;
-            gv *= Mathf.PI * inv;
+            A *= amp; dA *= amp;
+
+            float phi = k * Mathf.PI * r + r * A;
+            f = Mathf.Cos(phi);
+            float sinPhi = Mathf.Sin(phi);
+            float fr = -sinPhi * (k * Mathf.PI + A);   // df/dr
+            float ft = -sinPhi * dA;                    // (1/r) df/dtheta
+            gx = fr * c - ft * s;
+            gy = fr * s + ft * c;
+            return phi > phiCap;
         }
 
         // ------------------------------------------------------------------ sound
@@ -434,27 +454,34 @@ namespace FracturedFrequencies.Tools
 
         private float RandSigned() => Rand01() * 2f - 1f;
 
+        private void RandomInDisk(out float x, out float y)
+        {
+            float r = Mathf.Sqrt(Rand01()), a = Rand01() * 6.2832f;
+            x = r * Mathf.Cos(a);
+            y = r * Mathf.Sin(a);
+        }
+
         private static List<Chord> DefaultChords() => new List<Chord>
         {
-            new Chord("C major", new Color(1.00f, 0.95f, 0.85f), 60, 64, 67),
-            new Chord("A minor", new Color(0.75f, 0.85f, 1.00f), 57, 60, 64),
-            new Chord("F major", new Color(0.90f, 1.00f, 0.85f), 53, 57, 60),
-            new Chord("G7",      new Color(1.00f, 0.85f, 0.95f), 55, 59, 62, 65),
-            new Chord("B dim",   new Color(0.85f, 0.80f, 1.00f), 59, 62, 65),
+            new Chord("C major", 3, new Color(1.00f, 0.95f, 0.85f), 60, 64, 67),
+            new Chord("A minor", 4, new Color(0.75f, 0.85f, 1.00f), 57, 60, 64),
+            new Chord("F major", 3, new Color(0.90f, 1.00f, 0.85f), 53, 57, 60),
+            new Chord("G7",      5, new Color(1.00f, 0.85f, 0.95f), 55, 59, 62, 65),
+            new Chord("B dim",   3, new Color(0.85f, 0.80f, 1.00f), 59, 62, 65),
         };
 
         private static Texture2D CreateDotTexture(int size)
         {
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "ChladniDot", wrapMode = TextureWrapMode.Clamp };
-            var px = new Color[size * size];
+            var pixels = new Color[size * size];
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {
                 float dx = (x + 0.5f) / size * 2f - 1f, dy = (y + 0.5f) / size * 2f - 1f;
                 float a = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy));
-                px[y * size + x] = new Color(1f, 1f, 1f, a * a * (3f - 2f * a));
+                pixels[y * size + x] = new Color(1f, 1f, 1f, a * a * (3f - 2f * a));
             }
-            tex.SetPixels(px);
+            tex.SetPixels(pixels);
             tex.Apply();
             return tex;
         }
@@ -490,7 +517,13 @@ namespace FracturedFrequencies.Tools
         {
             Gizmos.color = new Color(0.6f, 0.8f, 1f, 0.8f);
             Gizmos.matrix = transform.localToWorldMatrix;
-            Gizmos.DrawWireCube(Vector3.zero, new Vector3(plateSize, 0.01f, plateSize));
+            const int seg = 64;
+            for (int i = 0; i < seg; i++)
+            {
+                float a0 = i * 6.2832f / seg, a1 = (i + 1) * 6.2832f / seg;
+                Gizmos.DrawLine(new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)) * radius,
+                                new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1)) * radius);
+            }
         }
     }
 }
