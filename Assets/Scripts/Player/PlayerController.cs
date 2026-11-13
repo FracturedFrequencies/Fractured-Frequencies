@@ -1,54 +1,82 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-namespace FracturedFrequencies.Player
+public class PlayerController : MonoBehaviour
 {
-    /// <summary>
-    /// Simple CharacterController player: WASD moves along world X/Z, Space jumps.
-    /// Input comes from PlayerInputReader. Ported from FF-Demo.
-    /// </summary>
-    [RequireComponent(typeof(CharacterController), typeof(PlayerInputReader))]
-    public class PlayerController : MonoBehaviour
+    [SerializeField] private float speed = 8f;
+    [SerializeField] private float speedSmoothing = 0.1f;
+    [SerializeField] private float rotationSmoothing = 12f;
+    [SerializeField] private float jumpForce = 30f;
+    [SerializeField] private float gravityMultiplier = 10f;
+    [SerializeField] private float coyoteTime = 0.1f;
+    private float g = -9.81f;
+    private float gravity;
+    private float lastGroundedTime = float.NegativeInfinity;
+    private Vector2 move;
+    private Vector3 currentVelocity;
+    private Vector3 velocitySmoothing;
+    private CharacterController characterController;
+
+    void Awake()
     {
-        [SerializeField] private float moveSpeed = 8f;
-        [SerializeField] private float speedSmoothing = 0.1f;
-        [SerializeField] private float rotationSmoothing = 12f;
-        [SerializeField] private float jumpSpeed = 25f;
-        [SerializeField] private float gravity = -85f;
+        characterController = GetComponent<CharacterController>();
+    }
 
-        private CharacterController _controller;
-        private PlayerInputReader _input;
-        private Vector3 _velocity;
-        private Vector3 _velocitySmoothing;
-        private float _verticalSpeed;
+    void Update()
+    {
+        ApplyGravity();
+        ApplyMovement();
+        ApplyRotation();
+    }
 
-        private void Awake()
+    private void ApplyMovement()
+    {
+        Vector3 targetVelocity = new Vector3(move.x, 0f, move.y) * speed;
+        Vector3 horizontalVelocity = Vector3.SmoothDamp(
+            new Vector3(currentVelocity.x, 0f, currentVelocity.z),
+            targetVelocity,
+            ref velocitySmoothing,
+            speedSmoothing);
+        currentVelocity = new Vector3(horizontalVelocity.x, gravity, horizontalVelocity.z);
+        characterController.Move(currentVelocity * Time.deltaTime);
+    }
+
+    private void ApplyRotation()
+    {
+        if (move.sqrMagnitude > 0)
         {
-            _controller = GetComponent<CharacterController>();
-            _input = GetComponent<PlayerInputReader>();
+            Quaternion targetRotation = Quaternion.LookRotation(new Vector3(move.x, 0f, move.y));
+            transform.rotation = Quaternion.Slerp(
+                transform.rotation,
+                targetRotation,
+                1f - Mathf.Exp(-rotationSmoothing * Time.deltaTime));
+        }
+    }
+
+    private void ApplyGravity()
+    {
+        if (characterController.isGrounded)
+        {
+            lastGroundedTime = Time.time;
+        }
+        else
+        {
+            gravity += g * gravityMultiplier * Time.deltaTime;
         }
 
-        private void Update()
-        {
-            // Horizontal movement
-            Vector3 move = new Vector3(_input.Move.x, 0f, _input.Move.y);
-            _velocity = Vector3.SmoothDamp(_velocity, move * moveSpeed, ref _velocitySmoothing, speedSmoothing);
+        currentVelocity.y = gravity;
+    }
 
-            // Face the walking direction
-            if (move.sqrMagnitude > 0.01f)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(move);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 1f - Mathf.Exp(-rotationSmoothing * Time.deltaTime));
-            }
+    public void OnMove(InputAction.CallbackContext context)
+    {
+        move = context.ReadValue<Vector2>();
+    }
 
-            // Jump and gravity
-            if (_controller.isGrounded)
-            {
-                if (_verticalSpeed < 0f) _verticalSpeed = -2f; // keeps the controller pressed to the ground
-                if (_input.JumpPressed) _verticalSpeed = jumpSpeed;
-            }
-            _verticalSpeed += gravity * Time.deltaTime;
-
-            _controller.Move((_velocity + Vector3.up * _verticalSpeed) * Time.deltaTime);
-        }
+    public void OnJump(InputAction.CallbackContext context)
+    {
+        if (!context.started) return;
+        // Coyote time allows players to jump after leaving the ground for a short period of time
+        if (Time.time - lastGroundedTime > coyoteTime) return;
+        gravity = jumpForce;
     }
 }
