@@ -1,5 +1,9 @@
 fileFormatVersion: 2
-guid: 27947483165188345a58e029ffa39d6b
+<<<<<<< HEAD:Assets/Scripts/Camera.meta
+guid: ca8e22bb54e6cea49bde18af9bafddc5
+=======
+guid: f5f0c52c979304d48abb1bcaeb6bffd3
+>>>>>>> dev/alex:Assets/PainterlyProcessing.meta
 folderAsset: yes
 DefaultImporter:
   externalObjects: {}
