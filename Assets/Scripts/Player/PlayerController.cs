@@ -59,6 +59,10 @@ public class PlayerController : MonoBehaviour
         {
             lastGroundedTime = Time.time;
         }
+        if (characterController.isGrounded && gravity < 0f)
+        {
+            gravity = 0f;
+        }
         else
         {
             gravity += g * gravityMultiplier * Time.deltaTime;
