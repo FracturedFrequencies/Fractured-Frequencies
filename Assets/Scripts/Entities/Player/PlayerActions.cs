@@ -5,6 +5,10 @@ using System.Collections.Generic;
 
 public class PlayerActions : MonoBehaviour
 {
+    [Header("Abilities")]
+    [SerializeField] private GroundField groundField;
+    [SerializeField] private Ability[] abilities = new Ability[4];
+
     private List<bool> actionQueue = new List<bool>();
     [SerializeField] private float actionTimer = 0.2f;
     [SerializeField] private int sliceDamage = 25;
@@ -14,10 +18,16 @@ public class PlayerActions : MonoBehaviour
     [SerializeField] private bool drawDebugHitbox = true;
     private int groundLayerMask;
     private float lastActionTime;
+    private DamageAbility defaultDamageAbility;
 
     private void Awake()
     {
         groundLayerMask = LayerMask.GetMask("Ground");
+
+        if (groundField == null)
+        {
+            groundField = FindFirstObjectByType<GroundField>();
+        }
 
         if (groundLayerMask == 0)
         {
@@ -84,9 +94,52 @@ public class PlayerActions : MonoBehaviour
                 ability = 4;
             }
 
-            Debug.Log($"Ability {ability}");
+            ActivateAbility(ability);
             actionQueue.Clear();
             return;
+        }
+    }
+
+    private void ActivateAbility(int abilityNumber)
+    {
+        if (groundField == null
+            || !groundField.TryGetHighlightedPattern(out GroundFieldPattern pattern))
+        {
+            Debug.LogWarning("Cannot activate an ability without a highlighted pattern.", this);
+            return;
+        }
+
+        Ability ability = GetAbility(abilityNumber);
+        ability.Activate(
+            pattern.FunctionParameters,
+            pattern.GetEntitiesInside(),
+            pattern.Center);
+    }
+
+    private Ability GetAbility(int abilityNumber)
+    {
+        int abilityIndex = abilityNumber - 1;
+
+        if (abilityIndex >= 0
+            && abilityIndex < abilities.Length
+            && abilities[abilityIndex] != null)
+        {
+            return abilities[abilityIndex];
+        }
+
+        if (defaultDamageAbility == null)
+        {
+            defaultDamageAbility = ScriptableObject.CreateInstance<DamageAbility>();
+        }
+
+        return defaultDamageAbility;
+    }
+
+    private void OnDestroy()
+    {
+        if (defaultDamageAbility != null)
+        {
+            Destroy(defaultDamageAbility);
         }
     }
 
@@ -126,7 +179,7 @@ public class PlayerActions : MonoBehaviour
 
             if (hitEntities.Add(entity))
             {
-                entity.TakeDamage(sliceDamage, transform.position);
+                entity.TakeDamage(sliceDamage, transform.position, true);
             }
         }
     }

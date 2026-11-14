@@ -12,19 +12,24 @@ public abstract class Entity : MonoBehaviour
     private Material[][] flashMaterials;
     private Color[][] flashOriginalColors;
 
-    public void TakeDamage(int damage, Vector3 origin)
+    public void TakeDamage(int damage, Vector3 origin, bool applyKnockback)
     {
         // Damage
         Attributes.health -= damage;
 
         // Knockback
-        CharacterController characterController = GetComponent<CharacterController>();
-        if (characterController != null)
+        if (applyKnockback)
         {
-            Vector3 direction = transform.position - origin;
-            if (direction.sqrMagnitude > 0f)
+            CharacterController characterController = GetComponent<CharacterController>();
+            if (characterController != null)
             {
-                knockbackCoroutine = StartCoroutine(ApplyKnockback(characterController, direction.normalized));
+                Vector3 direction = transform.position - origin;
+                if (direction.sqrMagnitude > 0f)
+                {
+                    knockbackCoroutine = StartCoroutine(ApplyKnockback(
+                        characterController,
+                        direction.normalized));
+                }
             }
         }
 

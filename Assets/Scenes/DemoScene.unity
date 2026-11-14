@@ -1024,8 +1024,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Player
   knockbackForce: 15
-  knockbackDuration: 0.3
-  flashDuration: 0.3
+  knockbackDuration: 0.5
+  flashDuration: 0.05
 --- !u!114 &357105279
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1038,6 +1038,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c698abb91ffb30b4892088cc68d2a631, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerActions
+  groundField: {fileID: 0}
+  abilities:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   actionTimer: 0.2
   sliceDamage: 25
   sliceLength: 5

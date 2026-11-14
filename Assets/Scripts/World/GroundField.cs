@@ -37,6 +37,12 @@ public class GroundField : MonoBehaviour
     private GroundFieldPattern highlightedPattern;
     private Material runtimePatternMaterial;
 
+    public bool TryGetHighlightedPattern(out GroundFieldPattern pattern)
+    {
+        pattern = highlightedPattern;
+        return pattern != null;
+    }
+
     private void Start()
     {
         if (Camera.main != null)
@@ -73,7 +79,7 @@ public class GroundField : MonoBehaviour
 
         if (playerActions == null)
         {
-            playerActions = FindObjectOfType<PlayerActions>();
+            playerActions = FindFirstObjectByType<PlayerActions>();
         }
 
         if (playerActions == null)

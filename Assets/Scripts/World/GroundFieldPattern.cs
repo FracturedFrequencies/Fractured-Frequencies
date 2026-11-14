@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class GroundFieldPattern : MonoBehaviour
 {
@@ -20,6 +21,25 @@ public class GroundFieldPattern : MonoBehaviour
     private bool hasBeenHighlighted;
     private float highlightStartTime;
     private float highlightDirection;
+
+    public PatternFunctionParameters FunctionParameters
+    {
+        get
+        {
+            return new PatternFunctionParameters
+            {
+                N = n,
+                M = m,
+                A = a,
+                B = b
+            };
+        }
+    }
+
+    public Vector3 Center
+    {
+        get { return center; }
+    }
 
     public void Initialize(
         Vector3 center,
@@ -76,11 +96,58 @@ public class GroundFieldPattern : MonoBehaviour
             && Mathf.Abs(localPoint.z) <= size * 0.5f;
     }
 
+    public bool IsInHighlightedArea(Vector3 point)
+    {
+        if (!Contains(point))
+        {
+            return false;
+        }
+
+        Vector3 localPoint = Quaternion.Inverse(rotation) * (point - center);
+        Vector2 coordinates = new Vector2(
+            Mathf.Clamp01(localPoint.x / size + 0.5f),
+            Mathf.Clamp01(localPoint.z / size + 0.5f));
+        float functionValue = a * Mathf.Cos(n * Mathf.PI * coordinates.x)
+            * Mathf.Cos(m * Mathf.PI * coordinates.y)
+            + b * Mathf.Cos(m * Mathf.PI * coordinates.x)
+            * Mathf.Cos(n * Mathf.PI * coordinates.y);
+
+        return IsInRange(functionValue, rangeMin, rangeMax);
+    }
+
     public float SqrDistanceTo(Vector3 point)
     {
         Vector3 horizontalOffset = point - center;
         horizontalOffset.y = 0f;
         return horizontalOffset.sqrMagnitude;
+    }
+
+    public List<Entity> GetEntitiesInside()
+    {
+        Entity[] entities = FindObjectsByType<Entity>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+        List<Entity> entitiesInside = new List<Entity>();
+
+        foreach (Entity entity in entities)
+        {
+            if (IsInHighlightedArea(entity.transform.position))
+            {
+                entitiesInside.Add(entity);
+            }
+        }
+
+        return entitiesInside;
+    }
+
+    private static bool IsInRange(float value, float minimum, float maximum)
+    {
+        if (minimum <= maximum)
+        {
+            return value >= minimum && value <= maximum;
+        }
+
+        return value <= maximum || value >= minimum;
     }
 
     public void SetHighlighted(bool highlighted)
