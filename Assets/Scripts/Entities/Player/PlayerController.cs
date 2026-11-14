@@ -5,7 +5,6 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] private float speed = 8f;
     [SerializeField] private float speedSmoothing = 0.1f;
-    [SerializeField] private float rotationSmoothing = 12f;
     [SerializeField] private float jumpForce = 30f;
     [SerializeField] private float gravityMultiplier = 10f;
     [SerializeField] private float coyoteTime = 0.1f;
@@ -26,7 +25,6 @@ public class PlayerController : MonoBehaviour
     {
         ApplyGravity();
         ApplyMovement();
-        ApplyRotation();
     }
 
     private void ApplyMovement()
@@ -39,18 +37,6 @@ public class PlayerController : MonoBehaviour
             speedSmoothing);
         currentVelocity = new Vector3(horizontalVelocity.x, gravity, horizontalVelocity.z);
         characterController.Move(currentVelocity * Time.deltaTime);
-    }
-
-    private void ApplyRotation()
-    {
-        if (move.sqrMagnitude > 0)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(new Vector3(move.x, 0f, move.y));
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                1f - Mathf.Exp(-rotationSmoothing * Time.deltaTime));
-        }
     }
 
     private void ApplyGravity()
