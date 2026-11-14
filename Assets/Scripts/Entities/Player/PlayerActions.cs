@@ -12,7 +12,18 @@ public class PlayerActions : MonoBehaviour
     [SerializeField] private float sliceWidth = 1.5f;
     [SerializeField] private float sliceHeight = 1.5f;
     [SerializeField] private bool drawDebugHitbox = true;
+    private int groundLayerMask;
     private float lastActionTime;
+
+    private void Awake()
+    {
+        groundLayerMask = LayerMask.GetMask("Ground");
+
+        if (groundLayerMask == 0)
+        {
+            Debug.LogError("PlayerActions requires a layer named 'Ground' for mouse detection.", this);
+        }
+    }
 
     private void Update()
     {
@@ -150,15 +161,12 @@ public class PlayerActions : MonoBehaviour
             return false;
         }
 
-        Ray mouseRay = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
-        Plane groundPlane = new Plane(Vector3.up, transform.position);
-
-        if (!groundPlane.Raycast(mouseRay, out float distance))
+        if (!TryGetMouseGroundPoint(out Vector3 aimPoint))
         {
             return false;
         }
 
-        direction = mouseRay.GetPoint(distance) - transform.position;
+        direction = aimPoint - transform.position;
         direction.y = 0f;
 
         if (direction.sqrMagnitude < 0.001f)
@@ -167,6 +175,39 @@ public class PlayerActions : MonoBehaviour
         }
 
         direction = direction.normalized;
+        return true;
+    }
+
+    public bool TryGetMouseGroundPoint(out Vector3 point)
+    {
+        point = Vector3.zero;
+
+        if (Mouse.current == null || Camera.main == null)
+        {
+            return false;
+        }
+
+        Ray mouseRay = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+
+        if (Physics.Raycast(
+                mouseRay,
+                out RaycastHit hit,
+                Mathf.Infinity,
+                groundLayerMask,
+                QueryTriggerInteraction.Ignore))
+        {
+            point = hit.point;
+            return true;
+        }
+
+        Plane groundPlane = new Plane(Vector3.up, transform.position);
+
+        if (!groundPlane.Raycast(mouseRay, out float distance))
+        {
+            return false;
+        }
+
+        point = mouseRay.GetPoint(distance);
         return true;
     }
 
