@@ -48,8 +48,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7be92c17cf131134aa8fcffe160b9aae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
-  knockbackForce: 15
-  knockbackDuration: 0.5
+  knockbackForce: 10
+  knockbackDuration: 0.25
   flashDuration: 0.05
   speed: 4
   speedSmoothing: 0.1

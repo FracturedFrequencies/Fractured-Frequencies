@@ -13,12 +13,17 @@ public class PlayerActions : MonoBehaviour
     [SerializeField] private float actionTimer = 0.2f;
     [SerializeField] private int sliceDamage = 25;
     [SerializeField] private float sliceLength = 5f;
-    [SerializeField] private float sliceWidth = 1.5f;
+    [SerializeField] private float sliceWidth = 2f;
     [SerializeField] private float sliceHeight = 1.5f;
+    [SerializeField] private GameObject slicePrefab;
     [SerializeField] private bool drawDebugHitbox = true;
     private int groundLayerMask;
     private float lastActionTime;
     private DamageAbility defaultDamageAbility;
+    private int sliceAttackState;
+    private int sliceAttackCount;
+    private float lastSliceAttackTime = -Mathf.Infinity;
+    private float sliceActionTimer = 0.5f;
 
     private void Awake()
     {
@@ -39,6 +44,11 @@ public class PlayerActions : MonoBehaviour
     {
         FaceMouse();
         ConsumeActions();
+
+        if (sliceAttackState != 0 && Time.time - lastSliceAttackTime >= sliceActionTimer)
+        {
+            sliceAttackState = 0;
+        }
     }
 
     public void OnLeftClick(InputAction.CallbackContext context)
@@ -145,11 +155,34 @@ public class PlayerActions : MonoBehaviour
 
     private void SliceAttack()
     {
+        lastSliceAttackTime = Time.time;
+
+        int attackState = sliceAttackState;
+        sliceAttackState = (sliceAttackState + 1) % 3;
+
+        float tiltAngle = attackState == 2 ? 0f : 30f;
+        bool isEverySecondAttack = sliceAttackCount % 2 == 1;
+        if (isEverySecondAttack)
+        {
+            tiltAngle += 180f;
+        }
+        sliceAttackCount++;
+
+        float widthMultiplier = attackState == 2 ? 2f : 1f;
+        float attackWidth = sliceWidth * widthMultiplier;
+
+        Quaternion sliceRotation =
+            transform.rotation * Quaternion.Euler(0f, 0f, tiltAngle);
+
+        GameObject slice = Instantiate(slicePrefab, transform.position, sliceRotation);
+        slice.transform.localScale = new Vector3(widthMultiplier, slice.transform.localScale.y, slice.transform.localScale.z);
+
+
         Vector3 hitboxCenter =
             transform.position + transform.forward * (sliceLength * 0.5f);
 
         Vector3 hitboxHalfExtents = new Vector3(
-            sliceWidth,
+            attackWidth,
             sliceHeight,
             sliceLength * 0.5f);
 
@@ -172,26 +205,26 @@ public class PlayerActions : MonoBehaviour
             Vector3 localHitPosition =
                 transform.InverseTransformPoint(hitCollider.ClosestPoint(transform.position));
 
-            if (!IsInsideSlice(localHitPosition))
+            if (!IsInsideSlice(localHitPosition, attackWidth))
             {
                 continue;
             }
 
             if (hitEntities.Add(entity))
             {
-                entity.TakeDamage(sliceDamage, transform.position, true);
+                entity.TakeDamage(sliceDamage, transform.position, 1f);
             }
         }
     }
 
-    private bool IsInsideSlice(Vector3 localPosition)
+    private bool IsInsideSlice(Vector3 localPosition, float attackWidth)
     {
         if (localPosition.z < 0f || localPosition.z > sliceLength)
         {
             return false;
         }
 
-        float widthPosition = localPosition.x / sliceWidth;
+        float widthPosition = localPosition.x / attackWidth;
         float lengthPosition = localPosition.z / sliceLength;
 
         return widthPosition * widthPosition + lengthPosition * lengthPosition <= 1f;

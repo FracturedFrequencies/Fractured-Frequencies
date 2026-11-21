@@ -4,21 +4,21 @@ using System.Collections;
 public abstract class Entity : MonoBehaviour
 {
     public Attributes Attributes;
-    public float knockbackForce = 15f;
-    public float knockbackDuration = 0.5f;
+    public float knockbackForce = 10f;
+    public float knockbackDuration = 0.25f;
     public float flashDuration = 0.05f;
     private Coroutine knockbackCoroutine;
     private Coroutine flashCoroutine;
     private Material[][] flashMaterials;
     private Color[][] flashOriginalColors;
 
-    public void TakeDamage(int damage, Vector3 origin, bool applyKnockback)
+    public void TakeDamage(int damage, Vector3 origin, float knockbackMultiplier)
     {
         // Damage
         Attributes.health -= damage;
 
         // Knockback
-        if (applyKnockback)
+        if (knockbackMultiplier != 0f)
         {
             CharacterController characterController = GetComponent<CharacterController>();
             if (characterController != null)
@@ -28,7 +28,8 @@ public abstract class Entity : MonoBehaviour
                 {
                     knockbackCoroutine = StartCoroutine(ApplyKnockback(
                         characterController,
-                        direction.normalized));
+                        direction.normalized,
+                        knockbackMultiplier));
                 }
             }
         }
@@ -106,7 +107,10 @@ public abstract class Entity : MonoBehaviour
         flashOriginalColors = null;
     }
 
-    private IEnumerator ApplyKnockback(CharacterController characterController, Vector3 direction)
+    private IEnumerator ApplyKnockback(
+        CharacterController characterController,
+        Vector3 direction,
+        float knockbackMultiplier)
     {
         float elapsed = 0f;
 
@@ -114,7 +118,8 @@ public abstract class Entity : MonoBehaviour
         {
             float deltaTime = Time.deltaTime;
             float decay = Mathf.Exp(-5f * (elapsed / knockbackDuration));
-            characterController.Move(direction * (knockbackForce / knockbackDuration) * decay * deltaTime);
+            characterController.Move(
+                direction * (knockbackForce * knockbackMultiplier / knockbackDuration) * decay * deltaTime);
             elapsed += deltaTime;
             yield return null;
         }

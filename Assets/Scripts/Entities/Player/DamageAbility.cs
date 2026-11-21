@@ -7,7 +7,6 @@ using UnityEngine;
 public class DamageAbility : Ability
 {
     [SerializeField] private int damage = 50;
-    [SerializeField] private bool applyKnockback = false;
     [SerializeField] private bool onlyAffectPlayer = false;
 
     protected override bool ShouldAffectTarget(Entity target)
@@ -20,6 +19,6 @@ public class DamageAbility : Ability
         PatternFunctionParameters patternParameters,
         Vector3 areaOrigin)
     {
-        target.TakeDamage(damage, areaOrigin, applyKnockback);
+        target.TakeDamage(damage, areaOrigin, 0);
     }
 }

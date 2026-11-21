@@ -39,6 +39,12 @@ public class GroundField : MonoBehaviour
 
     public bool TryGetHighlightedPattern(out GroundFieldPattern pattern)
     {
+        if (playerActions != null
+            && playerActions.TryGetMouseGroundPoint(out Vector3 mousePoint))
+        {
+            SetHighlightedPattern(FindClosestContainingPattern(mousePoint));
+        }
+
         pattern = highlightedPattern;
         return pattern != null;
     }
@@ -159,7 +165,7 @@ public class GroundField : MonoBehaviour
 
                 placements.Add(new PatternPlacement
                 {
-                    center = transform.position + new Vector3(x, transform.position.y, z),
+                    center = transform.TransformPoint(new Vector3(x, 0f, z)),
                     size = size,
                     rotation = rotation
                 });
@@ -304,8 +310,9 @@ public class GroundField : MonoBehaviour
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(0.1f, 0.8f, 1f, 0.3f);
+        Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.DrawWireCube(
-            transform.position,
+            Vector3.zero,
             new Vector3(fieldSize.x, 0.01f, fieldSize.y));
     }
 }

@@ -1047,8 +1047,9 @@ MonoBehaviour:
   actionTimer: 0.2
   sliceDamage: 25
   sliceLength: 5
-  sliceWidth: 1.5
+  sliceWidth: 2
   sliceHeight: 1.5
+  slicePrefab: {fileID: 695455278534670004, guid: fb07fc21cafd82a46813bc183a6fb5b5, type: 3}
   drawDebugHitbox: 1
 --- !u!136 &357105280
 CapsuleCollider:
@@ -1619,10 +1620,10 @@ MonoBehaviour:
   generateOnStart: 1
   normalColor: {r: 0, g: 0, b: 0, a: 0.35}
   nodeLineWidth: 0.03
-  n: 3
-  m: 2
+  n: 1
+  m: 7
   a: 1
-  b: 1
+  b: -1
   rangeMin: -0.5
   rangeMax: 0.5
 --- !u!1 &681934723
