@@ -16,12 +16,14 @@ public class PlayerActions : MonoBehaviour
     [SerializeField] private float sliceWidth = 2f;
     [SerializeField] private float sliceHeight = 1.5f;
     [SerializeField] private GameObject slicePrefab;
+    [SerializeField] private GameObject sliceParticlePrefab;
+    [SerializeField] private GameObject bloodParticlePrefab;
     [SerializeField] private bool drawDebugHitbox = true;
     private int groundLayerMask;
     private float lastActionTime;
     private DamageAbility defaultDamageAbility;
     private int sliceAttackState;
-    private int sliceAttackCount;
+    private bool isEverySecondAttack = false;
     private float lastSliceAttackTime = -Mathf.Infinity;
     private float sliceActionTimer = 0.5f;
 
@@ -53,7 +55,7 @@ public class PlayerActions : MonoBehaviour
 
     public void OnLeftClick(InputAction.CallbackContext context)
     {
-        if (context.performed)
+        if (context.performed && Time.timeScale > 0f)
         {
             lastActionTime = Time.time;
             actionQueue.Add(true);
@@ -62,7 +64,7 @@ public class PlayerActions : MonoBehaviour
 
     public void OnRightClick(InputAction.CallbackContext context)
     {
-        if (context.performed)
+        if (context.performed && Time.timeScale > 0f)
         {
             lastActionTime = Time.time;
             actionQueue.Add(false);
@@ -160,13 +162,15 @@ public class PlayerActions : MonoBehaviour
         int attackState = sliceAttackState;
         sliceAttackState = (sliceAttackState + 1) % 3;
 
-        float tiltAngle = attackState == 2 ? 0f : 30f;
-        bool isEverySecondAttack = sliceAttackCount % 2 == 1;
-        if (isEverySecondAttack)
+        float tiltAngle = attackState == 2 ? 0f : attackState == 1 ? 150f : 30f;
+        if (attackState == 2)
         {
-            tiltAngle += 180f;
+            if (isEverySecondAttack)
+            {
+                tiltAngle += 180f;
+            }
+            isEverySecondAttack = !isEverySecondAttack;
         }
-        sliceAttackCount++;
 
         float widthMultiplier = attackState == 2 ? 2f : 1f;
         float attackWidth = sliceWidth * widthMultiplier;
@@ -202,13 +206,21 @@ public class PlayerActions : MonoBehaviour
                 continue;
             }
 
+            Vector3 collisionPoint = hitCollider.ClosestPoint(transform.position);
+
             Vector3 localHitPosition =
-                transform.InverseTransformPoint(hitCollider.ClosestPoint(transform.position));
+                transform.InverseTransformPoint(collisionPoint);
 
             if (!IsInsideSlice(localHitPosition, attackWidth))
             {
                 continue;
             }
+
+            Vector3 direction = collisionPoint - transform.position;
+            Instantiate(sliceParticlePrefab, collisionPoint, Quaternion.LookRotation(direction));
+            // Instantiate(bloodParticlePrefab, collisionPoint, Quaternion.LookRotation(direction));
+            // HitPause.Instance.Pause(0.15f);
+            ScreenShake.Instance.Shake(0.15f, 0.5f);
 
             if (hitEntities.Add(entity))
             {

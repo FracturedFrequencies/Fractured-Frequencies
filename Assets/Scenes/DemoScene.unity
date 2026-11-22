@@ -404,6 +404,8 @@ GameObject:
   - component: {fileID: 286062459}
   - component: {fileID: 286062462}
   - component: {fileID: 286062463}
+  - component: {fileID: 286062465}
+  - component: {fileID: 286062464}
   m_Layer: 0
   m_Name: MainCamera
   m_TagString: MainCamera
@@ -544,6 +546,30 @@ MonoBehaviour:
   target: {fileID: 357105272}
   smoothTime: 2
   offset: {x: 0, y: 0, z: 0}
+--- !u!114 &286062464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 286062457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c54c74c55853d6e4e895d9679f8be551, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScreenShake
+--- !u!114 &286062465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 286062457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc7ece475b4b2a14c8052db8a7a67bab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HitPause
 --- !u!1 &302273175
 GameObject:
   m_ObjectHideFlags: 0
@@ -1050,6 +1076,8 @@ MonoBehaviour:
   sliceWidth: 2
   sliceHeight: 1.5
   slicePrefab: {fileID: 695455278534670004, guid: fb07fc21cafd82a46813bc183a6fb5b5, type: 3}
+  sliceParticlePrefab: {fileID: 856825040426027558, guid: 87692234b1a4ca847b0a598df1632584, type: 3}
+  bloodParticlePrefab: {fileID: 2010693950554115341, guid: 3d4fb0919c8a1664caea5dc80659d81d, type: 3}
   drawDebugHitbox: 1
 --- !u!136 &357105280
 CapsuleCollider:
